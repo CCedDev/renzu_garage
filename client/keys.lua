@@ -132,35 +132,6 @@ function isVehicleUnlocked()
                     TriggerServerEvent('statebugupdate','havekeys',true, networked and VehToNet(veh))
                     Wait(111)
                 end
-                if not ent.havekeys and not Config.Ox_Inventory then
-                    ent.havekeys = owned_vehicles[plate] ~= nil and owned_vehicles[plate][owner] == PlayerData.identifier or ent.share ~= nil and ent.share[PlayerData.identifier] or false
-                    if ent.hotwired and ent.havekeys then
-                        ent.hotwired = false
-                        ent:set('hotwired', false, true)
-                        TriggerServerEvent('statebugupdate','hotwired',false, networked and VehToNet(veh))
-                        ent:set('havekeys', false, true)
-                        TriggerServerEvent('statebugupdate','havekeys',false, networked and VehToNet(veh))
-                        Wait(200)
-                        ent.havekeys = true
-                        SetVehicleEngineOn(veh,false,true,false)
-                        SetVehicleNeedsToBeHotwired(veh,false)
-                        Wait(100)
-                    end
-                elseif ent.havekeys or not Config.Ox_Inventory and owned_vehicles[plate] ~= nil and owned_vehicles[plate][owner] == PlayerData.identifier or ent.share ~= nil and ent.share[PlayerData.identifier] then
-                    SetVehicleEngineOn(veh,false,true,false)
-                    SetVehicleNeedsToBeHotwired(veh,false)
-                    if havekeys then
-                        ent:set('hotwired', false, true)
-                        TriggerServerEvent('statebugupdate','hotwired',false, networked and VehToNet(veh))
-                    end
-                    -- ent:set('havekeys', false, true)
-                    -- TriggerServerEvent('statebugupdate','havekeys',false, VehToNet(veh))
-                    Wait(200)
-                    ent.havekeys = true
-                    SetVehicleEngineOn(veh,false,true,false)
-                    SetVehicleNeedsToBeHotwired(veh,false)
-                    Wait(100)
-                end
                 if not ent.unlock and Config.LockAllLocalVehicle 
                 or not ent.unlock and GetEntityPopulationType(veh) == 7 and not Config.LockAllLocalVehicle then 
                     SetVehicleDoorsLocked(veh, 2)
@@ -203,44 +174,6 @@ function isVehicleUnlocked()
                     end
                 end
                 Wait(100)
-                local canhotwire = Config.Ox_Inventory and not ent.havekeys and not owned_vehicles[plate] or not Config.Ox_Inventory and not ent.havekeys
-                if Config.EnableHotwire and ent.unlock and canhotwire and GetPedInVehicleSeat(veh,-1) == cache.ped and not GetIsVehicleEngineRunning(veh) then
-                    SetVehicleEngineOn(veh,false,true,true)
-                    while GetPedInVehicleSeat(veh,-1) == cache.ped and not GetIsVehicleEngineRunning(veh) do
-                        ShowFloatingHelpNotification('[H] '..Message[52]..' <br> [F] to '..Message[53], GetEntityCoords(veh), true, 'hotwire')
-                        if IsControlJustPressed(0,74) then
-                            HotWireVehicle(veh)
-                            Wait(1000)
-                        end
-                        Wait(0)
-                    end
-                    SetVehicleNeedsToBeHotwired(veh,true)
-                end
-                local ent = Entity(veh).state
-                if not ent.share then ent.share = {} end
-                if ent.unlock and ent.havekeys and not ent.hotwired and not GetIsVehicleEngineRunning(veh) and not owned_vehicles[plate] and not ent.share[PlayerData.identifier] and not DoesPlayerHaveKey(veh,plate)
-                or ent.unlock and ent.havekeys and not ent.hotwired and not GetIsVehicleEngineRunning(veh) and not ent.share[PlayerData.identifier] and not DoesPlayerHaveKey(veh,plate) then
-                    SetPedConfigFlag(cache.ped,429,true)
-                    SetVehicleEngineOn(veh,false,true,false)
-                    SetVehicleNeedsToBeHotwired(veh,true)
-                elseif ent.unlock and not ent.havekeys and not ent.hotwired and not owned_vehicles[plate] then
-                    SetVehicleEngineOn(veh,false,true,true)
-                    SetVehicleNeedsToBeHotwired(veh,false)
-                elseif not Config.EnableHotwire and not owned_vehicles[plate] then
-                    SetPedConfigFlag(cache.ped,429,true)
-                    SetVehicleEngineOn(veh,false,true,false)
-                    SetVehicleNeedsToBeHotwired(veh,false)
-                end
-                Wait(5000)
-                if ent.bypasskey and not GetIsVehicleEngineRunning(veh) and not IsVehicleNeedsToBeHotwired(veh) then
-                    SetPedConfigFlag(cache.ped,429,false)
-                    SetVehicleNeedsToBeHotwired(veh,false)
-                    SetVehicleEngineOn(veh,true,true,false)
-                    SetVehicleJetEngineOn(veh,true)
-                    Wait(100)
-                    SetPedConfigFlag(cache.ped,429,false)
-                end
-                break
             end
             Wait(sleep)
         end
@@ -525,118 +458,6 @@ CreateThread(function()
 	return
 end)
 
--- LOCKPICK
-CreateThread(function()
-    if Config.EnableLockpickCommand then
-        RegisterCommand(Config.LockpickCommand, function()
-            LockPick()
-        end, false)
-    end
-    return
-end)
-
-RegisterNetEvent('renzu_garage:lockpick', function()
-    LockPick()
-end)
-
-exports('lockpick', LockPick)
-
-function HotWireVehicle(veh)
-    SetVehicleNeedsToBeHotwired(veh,false)
-    SetVehicleDoorsLocked(veh, 1)
-    local ent = Entity(veh).state
-    while not ent.havekeys do
-        Wait(20)
-        SetVehicleEngineOn(veh,false,true,true)
-        TaskEnterVehicle(cache.ped, veh, 10.0, -1, 2.0, 8)
-        while not IsPedInAnyVehicle(cache.ped) do Wait(100) SetVehicleDoorsLocked(veh, 1) end
-        local o = {
-            dict = "anim@amb@clubhouse@tutorial@bkr_tut_ig3@",
-            name = "machinic_loop_mechandplayer",
-            speed = 1,
-            flag = 49,
-        }
-        SetTimeout(1000,function()
-            local lockpick = lib.progressBar({
-                duration = 5000,
-                label = 'Hot Wiring..',
-                useWhileDead = false,
-                canCancel = true,
-                anim = {
-                    dict = 'anim@amb@clubhouse@tutorial@bkr_tut_ig3@',
-                    clip = 'machinic_loop_mechandplayer' 
-                },
-            })
-        end)
-        local ret = lib.skillCheck({'easy', 'easy', {areaSize = 60, speedMultiplier = 2}, 'easy'})
-        if lib.progressActive() then
-            lib.cancelProgress()
-        end
-        if ret then
-            SetPedConfigFlag(cache.ped,429,false)
-            SetVehicleEngineOn(veh,false,true,false)
-            SetVehicleNeedsToBeHotwired(veh,true)
-            ent.havekeys = true
-            ent:set('havekeys', true, true)
-            ent:set('hotwired', true, true)
-            local networked = NetworkGetEntityIsNetworked(veh)
-            TriggerServerEvent('statebugupdate','havekeys',true, networked and VehToNet(veh))
-            TriggerServerEvent('statebugupdate','hotwired',true, networked and VehToNet(veh))
-            break
-        elseif Config.EnableAlert then
-            Config.FailAlert()
-        end
-    end
-end
-
-function LockPick()
-    local playerPed = cache.ped
-    local coords    = GetEntityCoords(playerPed)
-    local distanceincar = 2.0
-    if IsAnyVehicleNearPoint(coords.x, coords.y, coords.z, distanceincar) then
-        if not Config.EnableLockpick then return end
-        local veh = getveh()
-        if veh ~= 0 then
-            local ent = Entity(veh).state
-            if not ent.unlock then
-                SetTimeout(1000,function()
-                    local lockpick = lib.progressBar({
-                        duration = 5000,
-                        label = 'Lockpicking..',
-                        useWhileDead = false,
-                        canCancel = true,
-                        disable = {
-                            car = true,
-                        },
-                        anim = {
-                            dict = 'veh@break_in@0h@p_m_one@',
-                            clip = 'low_force_entry_ds' 
-                        },
-                    })
-                end)
-                local ret = lib.skillCheck({'easy', 'easy', {areaSize = 60, speedMultiplier = 2}, 'easy'})
-                if lib.progressActive() then
-                    lib.cancelProgress()
-                end
-                if ret then
-                    ent.unlock = not ent.unlock
-                    ent:set('unlock', ent.unlock, true)
-                    local networked = NetworkGetEntityIsNetworked(veh)
-                    TriggerServerEvent('statebugupdate','unlock',ent.unlock, networked and VehToNet(veh))
-                    SetVehicleDoorsLocked(veh, 1)
-                    HotWireVehicle(veh)
-                else
-                    if Config.EnableAlert then
-                        Config.FailAlert()
-                    end
-                    SetVehicleAlarmTimeLeft(veh,20)
-                    SetVehicleAlarm(veh,true)
-                    StartVehicleAlarm(veh)
-                end
-            end
-        end
-    end
-end
 
 -- Vehicle Keys
 
